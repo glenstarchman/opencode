@@ -9,12 +9,22 @@
     "build": "./script/build.ts"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./client": "./dist/client.js",
-    "./server": "./dist/server.js",
-    "./v2": "./dist/v2/index.js",
-    "./v2/client": "./dist/v2/client.js",
-    "./v2/server": "./dist/v2/server.js"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./server": "./src/server.ts",
+    "./v2": {
+      "types": "./dist/v2/index.d.ts",
+      "default": "./src/v2/index.ts"
+    },
+    "./v2/client": {
+      "types": "./dist/v2/client.d.ts",
+      "default": "./src/v2/client.ts"
+    },
+    "./v2/gen/client": {
+      "types": "./dist/v2/gen/client/index.d.ts",
+      "default": "./src/v2/gen/client/index.ts"
+    },
+    "./v2/server": "./src/v2/server.ts"
   },
   "files": [
     "dist"
@@ -26,7 +36,9 @@
     "typescript": "catalog:",
     "@typescript/native-preview": "catalog:"
   },
-  "dependencies": {},
+  "dependencies": {
+    "yarn": "1.22.22"
+  },
   "publishConfig": {
     "directory": "dist"
   }
