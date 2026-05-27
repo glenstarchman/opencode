@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import type { StatusCode } from "hono/utils/http-status"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import { SessionID, MessageID, PartID } from "@/session/schema"
 import z from "zod"
