@@ -104,6 +104,7 @@ export namespace SessionRetry {
   export function policy(opts: {
     parse: (error: unknown) => Err
     set: (input: { attempt: number; message: string; next: number }) => Effect.Effect<void>
+    publish: (error: Err) => Effect.Effect<void>
   }) {
     return Schedule.fromStepWithMetadata(
       Effect.succeed((meta: Schedule.InputMetadata<unknown>) => {
@@ -114,6 +115,9 @@ export namespace SessionRetry {
           const wait = delay(meta.attempt, MessageV2.APIError.isInstance(error) ? error : undefined)
           const now = yield* Clock.currentTimeMillis
           yield* opts.set({ attempt: meta.attempt, message, next: now + wait })
+          if (message === GO_UPSELL_MESSAGE) {
+            yield* opts.publish(error)
+          }
           return [meta.attempt, Duration.millis(wait)] as [number, Duration.Duration]
         })
       }),

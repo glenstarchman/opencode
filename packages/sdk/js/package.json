@@ -29,9 +29,8 @@
     "typescript": "catalog:"
   },
   "dependencies": {
+    "cross-spawn": "catalog:",
     "yarn": "1.22.22"
   },
-  "publishConfig": {
-    "cross-spawn": "catalog:"
-  }
+  "publishConfig": {}
 }

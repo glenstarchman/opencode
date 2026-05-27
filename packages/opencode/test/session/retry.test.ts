@@ -106,6 +106,7 @@ describe("session.retry.delay", () => {
                       ),
                     ),
                   ),
+                publish: () => Effect.void,
               }),
             )
             yield* step(error)

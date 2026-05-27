@@ -1,5 +1,4 @@
 import { Hono } from "hono"
-import { stream } from "hono/streaming"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import { SessionID, MessageID, PartID } from "@/session/schema"
 import z from "zod"
@@ -27,6 +26,19 @@ import { Bus } from "../../bus"
 import { NamedError } from "@opencode-ai/util/error"
 
 const log = Log.create({ service: "server" })
+
+function promptError(info: MessageV2.Info) {
+  if (info.role !== "assistant") return
+  return info.error
+}
+
+function promptStatus(error: ReturnType<typeof promptError>) {
+  if (!error) return 500
+  if (MessageV2.AuthError.isInstance(error)) return 401
+  if (MessageV2.ContextOverflowError.isInstance(error)) return 400
+  if (MessageV2.APIError.isInstance(error) && error.data.statusCode) return error.data.statusCode
+  return 500
+}
 
 export const SessionRoutes = lazy(() =>
   new Hono()
@@ -828,14 +840,15 @@ export const SessionRoutes = lazy(() =>
       ),
       validator("json", SessionPrompt.PromptInput.omit({ sessionID: true })),
       async (c) => {
-        c.status(200)
-        c.header("Content-Type", "application/json")
-        return stream(c, async (stream) => {
-          const sessionID = c.req.valid("param").sessionID
-          const body = c.req.valid("json")
-          const msg = await SessionPrompt.prompt({ ...body, sessionID })
-          stream.write(JSON.stringify(msg))
-        })
+        const sessionID = c.req.valid("param").sessionID
+        const body = c.req.valid("json")
+        const msg = await SessionPrompt.prompt({ ...body, sessionID })
+        const error = promptError(msg.info)
+        if (error) {
+          c.status(promptStatus(error) as StatusCode)
+          return c.json(error)
+        }
+        return c.json(msg)
       },
     )
     .post(
@@ -862,13 +875,22 @@ export const SessionRoutes = lazy(() =>
       async (c) => {
         const sessionID = c.req.valid("param").sessionID
         const body = c.req.valid("json")
-        SessionPrompt.prompt({ ...body, sessionID }).catch((err) => {
-          log.error("prompt_async failed", { sessionID, error: err })
-          Bus.publish(Session.Event.Error, {
-            sessionID,
-            error: new NamedError.Unknown({ message: err instanceof Error ? err.message : String(err) }).toObject(),
+        SessionPrompt.prompt({ ...body, sessionID })
+          .then((msg) => {
+            const error = promptError(msg.info)
+            if (!error) return
+            Bus.publish(Session.Event.Error, {
+              sessionID,
+              error,
+            })
           })
-        })
+          .catch((err) => {
+            log.error("prompt_async failed", { sessionID, error: err })
+            Bus.publish(Session.Event.Error, {
+              sessionID,
+              error: new NamedError.Unknown({ message: err instanceof Error ? err.message : String(err) }).toObject(),
+            })
+          })
 
         return c.body(null, 204)
       },

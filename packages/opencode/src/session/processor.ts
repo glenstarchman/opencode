@@ -569,6 +569,11 @@ export namespace SessionProcessor {
                       message: info.message,
                       next: info.next,
                     }),
+                  publish: (error: any) =>
+                    Effect.promise(() => Bus.publish(Session.Event.Error, {
+                      sessionID: ctx.sessionID,
+                      error,
+                    })).pipe(Effect.catch(() => Effect.void)),
                 }),
               ),
               Effect.catch(halt),
